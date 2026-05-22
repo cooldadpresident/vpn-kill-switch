@@ -14,7 +14,7 @@ dependencies {
 }
 
 jar {
-    archiveFileName = 'vpn-kill-switch.jar'
+    archiveName = 'vpn-kill-switch.jar'
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
