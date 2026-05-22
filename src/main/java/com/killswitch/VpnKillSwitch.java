@@ -67,8 +67,10 @@ public class VpnKillSwitch implements BurpExtension {
             public RequestToBeSentAction handleHttpRequestToBeSent(HttpRequestToBeSent request) {
                 if (killed.get()) {
                     logging.logToOutput("[BLOCKED] " + request.url());
+                    // 192.0.2.1 is RFC 5737 TEST-NET — guaranteed unreachable,
+                    // no listener can exist, no application data leaves the host
                     return RequestToBeSentAction.continueWith(
-                        request.withService(HttpService.httpService("127.0.0.1", 19999, false))
+                        request.withService(HttpService.httpService("192.0.2.1", 80, false))
                     );
                 }
                 return RequestToBeSentAction.continueWith(request);
@@ -108,7 +110,9 @@ public class VpnKillSwitch implements BurpExtension {
         api.extension().registerUnloadingHandler(scheduler::shutdownNow);
 
         // IP detection off the loader thread — disarms once both succeed
-        new Thread(this::initIps, "vpn-init").start();
+        Thread initThread = new Thread(this::initIps, "vpn-init");
+        initThread.setDaemon(true);
+        initThread.start();
     }
 
     private void initIps() {
@@ -188,7 +192,7 @@ public class VpnKillSwitch implements BurpExtension {
 
     private String fetchPublicIp() {
         String url = checkUrl;
-        if (url == null || (!url.startsWith("https://") && !url.startsWith("http://"))) {
+        if (url == null || !url.startsWith("https://")) {
             logging.logToError("[VPN Kill Switch] Rejected check URL: " + url);
             return null;
         }
@@ -261,7 +265,7 @@ public class VpnKillSwitch implements BurpExtension {
                 publicIpLabel.setText("Public IP: " + publicIp);
                 resumeButton.setEnabled(false);
             });
-        }, "vpn-resume").start();
+        }, "vpn-resume") {{ setDaemon(true); }}.start();
     }
 
     private JPanel buildPanel() {
@@ -303,11 +307,11 @@ public class VpnKillSwitch implements BurpExtension {
         JButton setBtn = new JButton("Set URL");
         setBtn.addActionListener(e -> {
             String val = checkUrlField.getText().trim();
-            if (val.startsWith("https://") || val.startsWith("http://")) {
+            if (val.startsWith("https://")) {
                 checkUrl = val;
                 logging.logToOutput("Check URL updated: " + checkUrl);
             } else {
-                logging.logToError("[VPN Kill Switch] Rejected URL — must start with https:// or http://");
+                logging.logToError("[VPN Kill Switch] Rejected URL — must start with https://");
             }
         });
         panel.add(setBtn, gbc);
