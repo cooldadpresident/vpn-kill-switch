@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.killswitch'
+version = '1.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly 'net.portswigger.burp.extensions:montoya-api:2026.2'
+}
+
+jar {
+    archiveFileName = 'vpn-kill-switch.jar'
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
